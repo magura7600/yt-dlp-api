@@ -21,34 +21,45 @@ def get_video_info():
         return jsonify({"error": "url প্যারামিটার দাও"}), 400
     
     try:
-        # কুকিজ ফাইলের পাথ নির্ধারণ করা হচ্ছে
         cookie_path = 'cookies.txt'
         
-        # অডিও ও ভিডিওসহ সেরা কোয়ালিটির কম্বাইন্ড ফরম্যাট খোঁজার কনফিগারেশন
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'format': 'best[ext=mp4]/best', # অডিও+ভিডিও সহ বেস্ট mp4
         }
         
-        # যদি cookies.txt ফাইলটি প্রজেক্টে থাকে, তবে সেটি লোড করবে (আইপি ব্লক এড়াতে)
         if os.path.exists(cookie_path):
             ydl_opts['cookiefile'] = cookie_path
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
-            # সরাসরি ভিডিওর ফাইনাল ডাউনলোড লিংকটি নেওয়া হচ্ছে
-            direct_url = info.get('url')
+            formats = []
+            seen_resolutions = set()
             
-            if not direct_url:
-                return jsonify({"error": "ডাইরেক্ট লিংক পাওয়া যায়নি"}), 404
+            # সব ফরম্যাট লুপ করে শুধু অডিওসহ ভিডিও (Combined/Progressive) অথবা ভালো ভিডিও ফরম্যাট নেওয়া হচ্ছে
+            for f in info.get('formats', []):
+                # শুধু ভিডিও ফরম্যাট যেগুলোর url ও রেজুলেশন নোট আছে
+                if f.get('url') and f.get('vcodec') != 'none':
+                    quality = f.get('format_note') or f.get('resolution') or 'Unknown'
+                    
+                    # ডুপ্লিকেট রেজুলেশন এড়াতে এবং পরিষ্কার রাখতে
+                    if quality not in seen_resolutions and 'audio only' not in quality.lower():
+                        seen_resolutions.add(quality)
+                        formats.append({
+                            "quality": quality,
+                            "url": f.get('url'),
+                            "ext": f.get('ext', 'mp4')
+                        })
+            
+            # রেজুলেশনগুলো উল্টো করে সাজানো হলো যাতে ভালো কোয়ালিটি উপরে থাকে
+            formats.reverse()
             
             return jsonify({
                 "title": info.get('title'),
                 "thumbnail": info.get('thumbnail'),
                 "duration": info.get('duration'),
-                "url": direct_url  # ফ্রন্টএন্ডের জন্য সরাসরি ভিডিও ইউআরএল
+                "formats": formats
             })
             
     except Exception as e:
