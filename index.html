@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Direct Link Extractor</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
+    h1 { text-align: center; color: #333; }
+    input { width: 100%; padding: 12px; font-size: 16px; margin: 10px 0; }
+    button { padding: 12px 20px; font-size: 16px; background: #ff0000; color: white; border: none; cursor: pointer; }
+    button:hover { background: #cc0000; }
+    #result { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; }
+    .format { margin: 10px 0; padding: 10px; background: #e0f7fa; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>YouTube Direct Link Extractor</h1>
+  
+  <input type="text" id="youtubeUrl" placeholder="YouTube লিংক পেস্ট করো..." />
+  <button onclick="getLinks()">ডাইরেক্ট লিংক বের করো</button>
+
+  <div id="result"></div>
+
+  <script>
+    const API_BASE = "https://yt-dlp-api-production-13d9.up.railway.app";
+
+    async function getLinks() {
+      const url = document.getElementById("youtubeUrl").value.trim();
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "<p>লোড হচ্ছে...</p>";
+
+      if (!url) {
+        resultDiv.innerHTML = "<p style='color:red'>লিংক দিন!</p>";
+        return;
+      }
+
+      try {
+        const res = await fetch(`\( {API_BASE}/info?url= \){encodeURIComponent(url)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          resultDiv.innerHTML = `<p style='color:red'>Error: ${data.error}</p>`;
+          return;
+        }
+
+        let html = `<h2>${data.title}</h2>`;
+        html += `<p>সময়: \( {Math.floor(data.duration/60)}: \){data.duration%60} মিনিট</p>`;
+
+        data.formats.forEach(f => {
+          html += `
+            <div class="format">
+              <strong>${f.quality}</strong><br>
+              <a href="${f.url}" target="_blank">▶️ প্লে করো</a> | 
+              <a href="${f.url}" download>⬇️ ডাউনলোড</a>
+            </div>`;
+        });
+
+        resultDiv.innerHTML = html;
+      } catch (err) {
+        resultDiv.innerHTML = "<p style='color:red'>সমস্যা হয়েছে। আবার চেষ্টা করো।</p>";
+      }
+    }
+  </script>
+</body>
+</html>
