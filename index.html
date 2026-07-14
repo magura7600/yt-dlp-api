@@ -7,11 +7,12 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
     h1 { text-align: center; color: #333; }
-    input { width: 100%; padding: 12px; font-size: 16px; margin: 10px 0; }
+    input { width: 100%; padding: 12px; font-size: 16px; margin: 10px 0; box-sizing: border-box; }
     button { padding: 12px 20px; font-size: 16px; background: #ff0000; color: white; border: none; cursor: pointer; }
     button:hover { background: #cc0000; }
     #result { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; }
-    .format { margin: 10px 0; padding: 10px; background: #e0f7fa; border-radius: 5px; }
+    .format { margin: 10px 0; padding: 15px; background: #e0f7fa; border-radius: 5px; }
+    .thumbnail { max-width: 100%; height: auto; border-radius: 5px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -36,7 +37,8 @@
       }
 
       try {
-        const res = await fetch(`\( {API_BASE}/info?url= \){encodeURIComponent(url)}`);
+        // জাভাস্ক্রিপ্ট স্ট্রিং ইন্টারপোলেশন ঠিক করা হলো
+        const res = await fetch(`${API_BASE}/info?url=${encodeURIComponent(url)}`);
         const data = await res.json();
 
         if (data.error) {
@@ -44,20 +46,26 @@
           return;
         }
 
-        let html = `<h2>${data.title}</h2>`;
-        html += `<p>সময়: \( {Math.floor(data.duration/60)}: \){data.duration%60} মিনিট</p>`;
+        // মিনিট ও সেকেন্ড হিসাব করার লজিক
+        const minutes = Math.floor(data.duration / 60);
+        const seconds = data.duration % 60;
 
-        data.formats.forEach(f => {
-          html += `
-            <div class="format">
-              <strong>${f.quality}</strong><br>
-              <a href="${f.url}" target="_blank">▶️ প্লে করো</a> | 
-              <a href="${f.url}" download>⬇️ ডাউনলোড</a>
-            </div>`;
-        });
+        // নতুন ব্যাকএন্ড রেসপন্স (Title, Thumbnail, Direct URL) অনুযায়ী HTML তৈরি
+        let html = `<h2>${data.title}</h2>`;
+        if (data.thumbnail) {
+          html += `<img src="${data.thumbnail}" class="thumbnail" alt="Thumbnail"><br>`;
+        }
+        html += `<p>সময়: ${minutes}:${seconds < 10 ? '0' : ''}${seconds} মিনিট</p>`;
+        
+        html += `
+          <div class="format">
+            <strong>সেরা কোয়ালিটি (Direct Link)</strong><br><br>
+            <a href="${data.url}" target="_blank" style="text-decoration: none; font-weight: bold; color: #007bff;">▶️ ভিডিও প্লে করো</a>
+          </div>`;
 
         resultDiv.innerHTML = html;
       } catch (err) {
+        console.error(err);
         resultDiv.innerHTML = "<p style='color:red'>সমস্যা হয়েছে। আবার চেষ্টা করো।</p>";
       }
     }
