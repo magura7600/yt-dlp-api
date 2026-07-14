@@ -37,14 +37,16 @@ def get_video_info():
             formats = []
             seen_resolutions = set()
             
-            # সব ফরম্যাট লুপ করে শুধু অডিওসহ ভিডিও (Combined/Progressive) অথবা ভালো ভিডিও ফরম্যাট নেওয়া হচ্ছে
+            # সব ফরম্যাট লুপ করে চেক করা হচ্ছে
             for f in info.get('formats', []):
-                # শুধু ভিডিও ফরম্যাট যেগুলোর url ও রেজুলেশন নোট আছে
-                if f.get('url') and f.get('vcodec') != 'none':
+                # শর্ত: ভিডিও ট্র্যাক থাকতে হবে এবং অডিও ট্র্যাকও থাকতে হবে (acodec ও vcodec কোনোটাই 'none' হতে পারবে না)
+                if f.get('url') and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
+                    
+                    # রেজুলেশনের নাম সেট করা (যেমন: 720p বা 360p)
                     quality = f.get('format_note') or f.get('resolution') or 'Unknown'
                     
-                    # ডুপ্লিকেট রেজুলেশন এড়াতে এবং পরিষ্কার রাখতে
-                    if quality not in seen_resolutions and 'audio only' not in quality.lower():
+                    # ডুপ্লিকেট রেজুলেশন বাদ দেওয়া হচ্ছে
+                    if quality not in seen_resolutions:
                         seen_resolutions.add(quality)
                         formats.append({
                             "quality": quality,
@@ -52,7 +54,7 @@ def get_video_info():
                             "ext": f.get('ext', 'mp4')
                         })
             
-            # রেজুলেশনগুলো উল্টো করে সাজানো হলো যাতে ভালো কোয়ালিটি উপরে থাকে
+            # ভালো কোয়ালিটি উপরে দেখানোর জন্য রিভার্স করা হলো
             formats.reverse()
             
             return jsonify({
