@@ -21,29 +21,21 @@ def get_video_info():
         return jsonify({"error": "url প্যারামিটার দাও"}), 400
     
     try:
-        cookie_path = 'cookies.txt'
-        
-        # এখানে নতুন অপটিমাইজড কনফিগারেশন সেট করা হয়েছে
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            # ইউটিউবের বট ডিটেকশন এবং আনলিস্টেড ভিডিও ব্লক বাইপাস করার মূল ট্রিক
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
                     'skip': ['webpage']
                 }
             },
-            # প্রফেশনাল রিকোয়েস্ট হেডারস
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Referer': 'https://www.youtube.com/'
             }
         }
-        
-        if os.path.exists(cookie_path):
-            ydl_opts['cookiefile'] = cookie_path
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -55,28 +47,35 @@ def get_video_info():
                     best_audio_url = f.get('url')
                     break
             
-            formats = []
-            seen_resolutions = set()
+            formats_dict = {}
             
             for f in info.get('formats', []):
-                if f.get('url') and f.get('vcodec') != 'none':
-                    quality = f.get('format_note') or f.get('resolution') or 'Unknown'
+                # ভিডিও কোডেক না থাকলে বা ইউআরএল না থাকলে বাদ
+                if not f.get('url') or f.get('vcodec') == 'none' or f.get('vcodec') is None:
+                    continue
+                
+                height = f.get('height')
+                if not height:
+                    continue
                     
-                    if quality not in seen_resolutions and 'audio only' not in quality.lower():
-                        seen_resolutions.add(quality)
-                        
-                        # যদি প্রোগ্রেসিভ ফরম্যাট হয় (আগে থেকেই অডিও আছে) তবে সেটার নিজস্ব অডিও থাকবে
-                        has_audio = f.get('acodec') != 'none'
-                        
-                        formats.append({
-                            "quality": quality,
-                            "video_url": f.get('url'),
-                            "audio_url": f.get('url') if has_audio else best_audio_url,
-                            "is_merged": has_audio,
-                            "ext": f.get('ext', 'mp4')
-                        })
+                quality_label = f"{height}p"
+                has_audio = f.get('acodec') != 'none' and f.get('acodec') is not None
+                
+                # আমরা চাই প্রতিটি রেজোলিউশনের (যেমন 720p, 360p, 144p) বেস্ট লিংকটি রাখতে।
+                # যদি এই রেজোলিউশনটি আগে না পেয়ে থাকি, অথবা নতুন পাওয়া লিংকটিতে অডিও+ভিডিও একসাথে থাকে (progressive), 
+                # তাহলে সেটাকে প্রাধান্য দেবো।
+                if quality_label not in formats_dict or (has_audio and not formats_dict[quality_label]['is_merged']):
+                    formats_dict[quality_label] = {
+                        "quality": quality_label,
+                        "video_url": f.get('url'),
+                        "audio_url": f.get('url') if has_audio else best_audio_url,
+                        "is_merged": has_audio,
+                        "ext": f.get('ext', 'mp4')
+                    }
             
-            formats.reverse()
+            # ডিকশনারি থেকে লিস্ট বানিয়ে রেজোলিউশন অনুযায়ী বড় থেকে ছোট সাজানো
+            formats = list(formats_dict.values())
+            formats.sort(key=lambda x: int(x['quality'].replace('p', '')), reverse=True)
             
             return jsonify({
                 "title": info.get('title'),
