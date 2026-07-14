@@ -4,7 +4,7 @@ import yt_dlp
 import os
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)  # CORS সচল রাখা হলো
+CORS(app)
 
 @app.route('/')
 def home():
@@ -22,7 +22,6 @@ def get_video_info():
     
     try:
         cookie_path = 'cookies.txt'
-        
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -34,27 +33,35 @@ def get_video_info():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
+            # সেরা অডিও ট্র্যাকটি খুঁজে বের করা
+            best_audio_url = None
+            for f in info.get('formats', []):
+                if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
+                    best_audio_url = f.get('url')
+                    break
+            
             formats = []
             seen_resolutions = set()
             
-            # সব ফরম্যাট লুপ করে চেক করা হচ্ছে
             for f in info.get('formats', []):
-                # শর্ত: ভিডিও ট্র্যাক থাকতে হবে এবং অডিও ট্র্যাকও থাকতে হবে (acodec ও vcodec কোনোটাই 'none' হতে পারবে না)
-                if f.get('url') and f.get('vcodec') != 'none' and f.get('acodec') != 'none':
-                    
-                    # রেজুলেশনের নাম সেট করা (যেমন: 720p বা 360p)
+                if f.get('url') and f.get('vcodec') != 'none':
                     quality = f.get('format_note') or f.get('resolution') or 'Unknown'
                     
-                    # ডুপ্লিকেট রেজুলেশন বাদ দেওয়া হচ্ছে
-                    if quality not in seen_resolutions:
+                    if quality not in seen_resolutions and 'audio only' not in quality.lower():
                         seen_resolutions.add(quality)
+                        
+                        # যদি প্রোগ্রেসিভ ফরম্যাট হয় (আগে থেকেই অডিও আছে) তবে সেটার নিজস্ব অডিও থাকবে
+                        # আর যদি অডিও না থাকে (acodec == 'none'), তবে আমাদের খুঁজে পাওয়া সেরা অডিওর লিংকটি জুড়ে দেব
+                        has_audio = f.get('acodec') != 'none'
+                        
                         formats.append({
                             "quality": quality,
-                            "url": f.get('url'),
+                            "video_url": f.get('url'),
+                            "audio_url": f.get('url') if has_audio else best_audio_url,
+                            "is_merged": has_audio,
                             "ext": f.get('ext', 'mp4')
                         })
             
-            # ভালো কোয়ালিটি উপরে দেখানোর জন্য রিভার্স করা হলো
             formats.reverse()
             
             return jsonify({
