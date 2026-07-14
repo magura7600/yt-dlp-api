@@ -1,12 +1,16 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import yt_dlp
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.', static_url_path='')
 
 @app.route('/')
 def home():
-    return "✅ yt-dlp API চলছে!"
+    return send_from_directory('.', 'index.html')
+
+@app.route('/index.html')
+def index():
+    return send_from_directory('.', 'index.html')
 
 @app.route('/info')
 def get_video_info():
@@ -18,7 +22,6 @@ def get_video_info():
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'extract_flat': False
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -36,7 +39,7 @@ def get_video_info():
                 "title": info.get('title'),
                 "thumbnail": info.get('thumbnail'),
                 "duration": info.get('duration'),
-                "formats": formats[-5:]  # সেরা ৫টা কোয়ালিটি
+                "formats": formats[-8:]   # সেরা ৮টা
             })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
