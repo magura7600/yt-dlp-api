@@ -11,7 +11,26 @@
     button { padding: 12px 20px; font-size: 16px; background: #ff0000; color: white; border: none; cursor: pointer; }
     button:hover { background: #cc0000; }
     #result { margin-top: 20px; padding: 15px; background: white; border-radius: 8px; }
-    .format { margin: 10px 0; padding: 15px; background: #e0f7fa; border-radius: 5px; }
+    .format-container { margin-top: 15px; }
+    .format { 
+      margin: 8px 0; 
+      padding: 12px; 
+      background: #e0f7fa; 
+      border-radius: 5px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+    }
+    .btn-download {
+      text-decoration: none; 
+      font-weight: bold; 
+      color: white; 
+      background: #007bff; 
+      padding: 6px 12px; 
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .btn-download:hover { background: #0056b3; }
     .thumbnail { max-width: 100%; height: auto; border-radius: 5px; margin-bottom: 10px; }
   </style>
 </head>
@@ -37,7 +56,6 @@
       }
 
       try {
-        // জাভাস্ক্রিপ্ট স্ট্রিং ইন্টারপোলেশন ঠিক করা হলো
         const res = await fetch(`${API_BASE}/info?url=${encodeURIComponent(url)}`);
         const data = await res.json();
 
@@ -46,23 +64,30 @@
           return;
         }
 
-        // মিনিট ও সেকেন্ড হিসাব করার লজিক
         const minutes = Math.floor(data.duration / 60);
         const seconds = data.duration % 60;
 
-        // নতুন ব্যাকএন্ড রেসপন্স (Title, Thumbnail, Direct URL) অনুযায়ী HTML তৈরি
         let html = `<h2>${data.title}</h2>`;
         if (data.thumbnail) {
           html += `<img src="${data.thumbnail}" class="thumbnail" alt="Thumbnail"><br>`;
         }
         html += `<p>সময়: ${minutes}:${seconds < 10 ? '0' : ''}${seconds} মিনিট</p>`;
         
-        html += `
-          <div class="format">
-            <strong>সেরা কোয়ালিটি (Direct Link)</strong><br><br>
-            <a href="${data.url}" target="_blank" style="text-decoration: none; font-weight: bold; color: #007bff;">▶️ ভিডিও প্লে করো</a>
-          </div>`;
+        html += `<div class="format-container"><h3>ডাউনলোড অপশনসমূহ:</h3>`;
 
+        if (data.formats && data.formats.length > 0) {
+          data.formats.forEach(f => {
+            html += `
+              <div class="format">
+                <span><strong>${f.quality}</strong> (${f.ext})</span>
+                <a href="${f.url}" target="_blank" class="btn-download">▶️ প্লে / ডাউনলোড</a>
+              </div>`;
+          });
+        } else {
+          html += `<p style='color:red'>কোনো ডাউনলোডযোগ্য রেজুলেশন পাওয়া যায়নি।</p>`;
+        }
+
+        html += `</div>`;
         resultDiv.innerHTML = html;
       } catch (err) {
         console.error(err);
