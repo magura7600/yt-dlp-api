@@ -22,9 +22,24 @@ def get_video_info():
     
     try:
         cookie_path = 'cookies.txt'
+        
+        # এখানে নতুন অপটিমাইজড কনফিগারেশন সেট করা হয়েছে
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            # ইউটিউবের বট ডিটেকশন এবং আনলিস্টেড ভিডিও ব্লক বাইপাস করার মূল ট্রিক
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['webpage']
+                }
+            },
+            # প্রফেশনাল রিকোয়েস্ট হেডারস
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.youtube.com/'
+            }
         }
         
         if os.path.exists(cookie_path):
@@ -51,7 +66,6 @@ def get_video_info():
                         seen_resolutions.add(quality)
                         
                         # যদি প্রোগ্রেসিভ ফরম্যাট হয় (আগে থেকেই অডিও আছে) তবে সেটার নিজস্ব অডিও থাকবে
-                        # আর যদি অডিও না থাকে (acodec == 'none'), তবে আমাদের খুঁজে পাওয়া সেরা অডিওর লিংকটি জুড়ে দেব
                         has_audio = f.get('acodec') != 'none'
                         
                         formats.append({
