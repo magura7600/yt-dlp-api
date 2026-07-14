@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 import yt_dlp
 import os
 
 app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app)  # এটা যোগ করা হয়েছে
 
 @app.route('/')
 def home():
@@ -39,7 +41,7 @@ def get_video_info():
                 "title": info.get('title'),
                 "thumbnail": info.get('thumbnail'),
                 "duration": info.get('duration'),
-                "formats": formats[-8:]   # সেরা ৮টা
+                "formats": formats[-8:]
             })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
