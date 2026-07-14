@@ -4,7 +4,7 @@ import yt_dlp
 import os
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)  # এটা যোগ করা হয়েছে
+CORS(app)  # CORS সচল রাখা হলো
 
 @app.route('/')
 def home():
@@ -21,28 +21,29 @@ def get_video_info():
         return jsonify({"error": "url প্যারামিটার দাও"}), 400
     
     try:
+        # অডিও ও ভিডিওসহ সেরা কোয়ালিটির কম্বাইন্ড ফরম্যাট খোঁজার কনফিগারেশন
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'format': 'best[ext=mp4]/best', # অডিও+ভিডিও সহ বেস্ট mp4/সবচেয়ে ভালো ফরম্যাট
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
-            formats = []
-            for f in info.get('formats', []):
-                if f.get('url') and f.get('vcodec') != 'none':
-                    formats.append({
-                        "quality": f.get('format_note', 'Unknown'),
-                        "url": f.get('url')
-                    })
+            # সরাসরি ভিডিওর ফাইনাল ডাউনলোড লিংকটি নেওয়া হচ্ছে
+            direct_url = info.get('url')
+            
+            if not direct_url:
+                return jsonify({"error": "ডাইরেক্ট লিংক পাওয়া যায়নি"}), 404
             
             return jsonify({
                 "title": info.get('title'),
                 "thumbnail": info.get('thumbnail'),
                 "duration": info.get('duration'),
-                "formats": formats[-8:]
+                "url": direct_url  # ফ্রন্টএন্ড যাতে সরাসরি এই কি (key) ধরে কাজ করতে পারে
             })
+            
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
